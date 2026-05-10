@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Production Consumption Planner</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Production operations</p>
+          <h1>Machine and material consumption</h1>
+          <p class="headline-copy">Upload production quantities and generate machine load, shift needs, and material usage from the BOM reference.</p>
+        </div>
+        <div class="source-pill" id="sourceMeta">Loading BOM...</div>
+      </header>
+
+      <main class="layout">
+        <section class="panel input-panel">
+        <div class="panel-head">
+          <div>
+            <h2>Production Qty</h2>
+            <p>Upload CSV or Excel with Item Code and Production Qty columns</p>
+          </div>
+          <div class="template-actions">
+            <a class="icon-link" href="production_qty_template.csv" download title="Download CSV template">
+              <span aria-hidden="true">↓</span>
+              CSV
+            </a>
+            <a class="icon-link secondary-link" href="production_qty_template.xlsx" download title="Download Excel template">
+              <span aria-hidden="true">↓</span>
+              Excel
+            </a>
+          </div>
+        </div>
+
+        <label class="dropzone" for="fileInput">
+          <input id="fileInput" type="file" accept=".csv,.txt,.tsv,.xlsx,.xls" />
+          <span class="upload-mark" aria-hidden="true">+</span>
+          <strong>Upload CSV or Excel</strong>
+          <span>Drop or choose .csv, .tsv, or .xlsx file</span>
+        </label>
+        <div class="upload-status" id="uploadStatus" role="status"></div>
+
+        <label class="date-field">
+          <span>Production date</span>
+          <input id="productionDateInput" type="date" />
+        </label>
+
+        <label class="date-field">
+          <span>Shifts per day</span>
+          <input id="shiftsPerDayInput" type="text" inputmode="numeric" value="3" />
+        </label>
+
+        <div class="manual-entry">
+          <label>
+            <span>Item code</span>
+            <input id="itemInput" list="itemList" placeholder="Search item code" />
+            <datalist id="itemList"></datalist>
+          </label>
+          <label>
+            <span>Qty</span>
+            <input id="qtyInput" type="number" min="0" step="1" placeholder="0" />
+          </label>
+          <button id="addLine" type="button">Add</button>
+        </div>
+
+        <label class="paste-label" for="pasteBox">Paste production rows</label>
+        <textarea id="pasteBox" spellcheck="false" placeholder="51A030075,1000&#10;51A030291,2500"></textarea>
+        <div class="actions">
+          <button id="loadPaste" type="button">Load Paste</button>
+          <button id="clearAll" type="button" class="ghost">Clear</button>
+        </div>
+
+        <div class="input-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Item Code</th>
+                <th>Production Qty</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="inputRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <section class="kpis" aria-label="summary">
+          <div>
+            <span>Production Date</span>
+            <strong id="productionDateLabel">-</strong>
+            <small>generated plan date</small>
+          </div>
+          <div>
+            <span>Total Qty</span>
+            <strong id="totalQty">0</strong>
+            <small>planned parts</small>
+          </div>
+          <div>
+            <span>Machine Hrs</span>
+            <strong id="totalHours">0</strong>
+            <small>required capacity</small>
+          </div>
+          <div>
+            <span>Shifts</span>
+            <strong id="totalShifts">0</strong>
+            <small>8-hour shifts</small>
+          </div>
+          <div>
+            <span>Days</span>
+            <strong id="totalDays">0</strong>
+            <small>to complete plan</small>
+          </div>
+          <div>
+            <span>Materials</span>
+            <strong id="totalMaterials">0</strong>
+            <small>consumption lines</small>
+          </div>
+        </section>
+
+        <section class="tabs">
+          <button class="tab active" data-tab="machine">Machine</button>
+          <button class="tab" data-tab="material">Material</button>
+          <button class="tab" data-tab="items">Items</button>
+          <button class="tab" data-tab="missing">Missing</button>
+          <button id="exportPlan" type="button" class="export primary-export">Save Excel Plan</button>
+          <button id="exportMachinePlan" type="button" class="export machine-export">Machine Plan</button>
+          <button id="exportBom" type="button" class="export bom-export">Export BOM</button>
+          <button id="exportCsv" type="button" class="export">Export Tab</button>
+        </section>
+        <div class="export-status" id="exportStatus" role="status"></div>
+
+        <section class="results">
+          <div class="table-tools">
+            <div>
+              <h2 id="tableTitle">Machine Consumption</h2>
+              <p>Calculated from production quantity and BOM reference rates</p>
+            </div>
+            <input id="filterBox" placeholder="Filter results" />
+          </div>
+          <div class="result-table-wrap">
+            <table>
+              <thead id="resultHead"></thead>
+              <tbody id="resultBody"></tbody>
+            </table>
+          </div>
+        </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="data.js?v=20260510"></script>
+    <script src="app.js?v=20260510-server-export"></script>
+  </body>
+</html>
