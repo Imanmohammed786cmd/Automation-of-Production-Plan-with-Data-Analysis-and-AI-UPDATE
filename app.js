@@ -58,10 +58,8 @@ const el = {
 const format = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
 const formatPrecise = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 6 });
 const formatQty = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
-const parserEndpoint =
-  window.location.protocol.startsWith("http") && window.location.port === "4175"
-    ? "/parse-upload"
-    : "http://127.0.0.1:4175/parse-upload";
+const serverBase = window.location.protocol.startsWith("http") ? window.location.origin : "http://127.0.0.1:4175";
+const apiUrl = (path) => `${serverBase}${path}`;
 
 function todayIsoDate() {
   const now = new Date();
@@ -192,9 +190,16 @@ function loadRows(rows) {
     return 0;
   }
   const header = rows[0].map((x) => x.toLowerCase());
-  const hasHeader = header.some((x) => x.includes("item")) || header.some((x) => x.includes("qty"));
-  const itemIndex = hasHeader ? Math.max(0, header.findIndex((x) => x.includes("item"))) : 0;
-  const qtyIndex = hasHeader ? Math.max(1, header.findIndex((x) => x.includes("qty") || x.includes("quantity"))) : 1;
+  const hasHeader =
+    header.some((x) => x.includes("item")) ||
+    header.some((x) => x.includes("code")) ||
+    header.some((x) => x.includes("qty")) ||
+    header.some((x) => x.includes("balance"));
+  const codeHeaderIndex = header.findIndex((x) => x.includes("item code") || x === "code" || x.endsWith(" code"));
+  const descriptionIndex = header.findIndex((x) => x.includes("item description"));
+  const qtyHeaderIndex = header.findIndex((x) => x.includes("qty") || x.includes("quantity") || x.includes("balance"));
+  const itemIndex = hasHeader ? (codeHeaderIndex >= 0 ? codeHeaderIndex : descriptionIndex >= 0 ? Math.max(0, descriptionIndex - 1) : 0) : 0;
+  const qtyIndex = hasHeader ? (qtyHeaderIndex >= 0 ? qtyHeaderIndex : 1) : 1;
   const body = hasHeader ? rows.slice(1) : rows;
   let loaded = 0;
 
@@ -214,7 +219,7 @@ function loadRows(rows) {
 async function parseExcelFile(file) {
   const form = new FormData();
   form.append("file", file);
-  const response = await fetch(parserEndpoint, {
+  const response = await fetch(apiUrl("/parse-upload"), {
     method: "POST",
     body: form,
   });
@@ -465,7 +470,7 @@ function rowsToCsv(rows) {
 }
 
 async function saveCsvOnServer(filename, content) {
-  const response = await fetch("http://127.0.0.1:4175/save-export", {
+  const response = await fetch(apiUrl("/save-export"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ filename, content }),
@@ -476,7 +481,7 @@ async function saveCsvOnServer(filename, content) {
 }
 
 async function savePlanXlsxOnServer(filename, rows) {
-  const response = await fetch("http://127.0.0.1:4175/save-plan-xlsx", {
+  const response = await fetch(apiUrl("/save-plan-xlsx"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ filename, rows }),
@@ -488,7 +493,7 @@ async function savePlanXlsxOnServer(filename, rows) {
 
 async function exportPlanXlsxOnServer() {
   const inputs = [...state.inputs].map(([code, qty]) => ({ code, qty }));
-  const response = await fetch("http://127.0.0.1:4175/export-plan-xlsx", {
+  const response = await fetch(apiUrl("/export-plan-xlsx"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -505,7 +510,7 @@ async function exportPlanXlsxOnServer() {
 
 async function exportMachinePlanXlsxOnServer() {
   const inputs = [...state.inputs].map(([code, qty]) => ({ code, qty }));
-  const response = await fetch("http://127.0.0.1:4175/export-machine-plan-xlsx", {
+  const response = await fetch(apiUrl("/export-machine-plan-xlsx"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -521,7 +526,7 @@ async function exportMachinePlanXlsxOnServer() {
 }
 
 function exportReadyHtml(label, saved) {
-  const url = new URL(saved.url, "http://127.0.0.1:4175/").href;
+  const url = new URL(saved.url, serverBase).href;
   const pathText = saved.path ? `<span class="saved-path">Saved to Downloads: ${escapeHtml(saved.path)}</span>` : "";
   return `${label}: <a href="${escapeHtml(url)}" download="${escapeHtml(saved.filename)}" target="_blank" rel="noopener">Open ${escapeHtml(saved.filename)}</a>${pathText}`;
 }
@@ -643,6 +648,13 @@ async function exportPlanCsv() {
     setUploadStatusHtml(html, "success");
     setExportStatusHtml(html, "success");
   } catch (error) {
+    const rows = buildExcelPlanRows();
+    if (rows.length) {
+      await downloadCsv("machine_wise_production_plan.csv", rows);
+      setUploadStatus("Server is unavailable, so CSV plan was created in the browser.", "success");
+      setExportStatus("Server is unavailable, so CSV plan was created in the browser.", "success");
+      return;
+    }
     setUploadStatus(error.message || "Unable to export Excel plan.", "error");
     setExportStatus(error.message || "Unable to export Excel plan.", "error");
   }
@@ -770,6 +782,13 @@ async function exportMachineWisePlanCsv() {
     setUploadStatusHtml(html, "success");
     setExportStatusHtml(html, "success");
   } catch (error) {
+    const rows = buildMachineWisePlanRows();
+    if (rows.length) {
+      await downloadCsv("machine_wise_plan_25_to_160.csv", rows);
+      setUploadStatus("Server is unavailable, so CSV machine plan was created in the browser.", "success");
+      setExportStatus("Server is unavailable, so CSV machine plan was created in the browser.", "success");
+      return;
+    }
     setUploadStatus(error.message || "Unable to export machine plan.", "error");
     setExportStatus(error.message || "Unable to export machine plan.", "error");
   }
